@@ -104,7 +104,7 @@ initial = do word <- fetchWord
 
 input :: IO Guess
 input = do putStrLn "Please guess a letter:"
-           getChar
+           toLower <$> getChar
 
 loop :: IO State -> IO ()
 loop s = do s' <- attempt s input
