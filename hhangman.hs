@@ -87,10 +87,14 @@ finished = (/= Undecided) . result
 
 -- IO
 
+clearScreen :: IO ()
+clearScreen = putStrLn $ chr 27 : "c"
+
 attempt :: IO State -> IO Guess -> IO State
 attempt iostate inp = do s <- iostate
                          g <- inp
                          s' <- return $ guess s g
+                         clearScreen
                          print s'
                          return s'
 
@@ -108,7 +112,9 @@ input = do putStrLn "Please guess a letter:"
 
 loop :: IO State -> IO ()
 loop s = do s' <- attempt s input
-            when (not (finished s')) $ loop $ return s'  
+            if (finished s') 
+              then when (result s' == Lost) $ putStrLn $ "\nThe word was: " ++ word s' ++ "\n"
+              else loop (return s') 
 
 main = do putStrLn "\n\nHey, let's play Hangman!\n\n"
           loop initial
