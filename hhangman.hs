@@ -15,7 +15,7 @@ type Row = (String, Int)  -- a partial image on one row
 type Stroke = [Row]       -- a partial picture, on various rows
 type Picture = [Stroke]   -- a picture drawn by successive application of strokes
 
-empty    = [("      ", r) | r <- [0..5]]
+empty    =  
 crossbar = [(" ____ ", 0)]
 pole     = [(" |    ", r) | r <- [1..4]]
 base     = [("___   ", 5)]
