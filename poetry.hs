@@ -54,7 +54,7 @@ structures = [
              ]
 
 
-
+pickIambicNoun = generate $ suchThat (elements singleNouns) (\w -> iambic snd w)
 
 
 
