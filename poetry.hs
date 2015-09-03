@@ -1,11 +1,12 @@
 import System.Random
+import Test.QuickCheck
 
 -- cf. http://developer.wordnik.com/docs.html#!/word/getTextPronunciations_get_5
 -- cf. https://en.wikipedia.org/wiki/Arpabet
 -- cf. https://www.wordsapi.com/docs#details
 
 
-type StressPattern = [Int]
+type StressPattern = [Char]
 type Wrd = (String, StressPattern)
 
 data PartOfSpeech = N1 | V1 | NS | VS | ADJ | ADV | ART | PREP | PRNOM1 | PRNOMS | PRACC1 | PRACCS | PRNS| CONJ
@@ -16,13 +17,24 @@ stressing pat ws = zip ws $ repeat pat
 
 singleNouns :: [Wrd]
 singleNouns = 
-    stressing [1] ["tree", "ball", "sun", "bark", "boat", "gold", "crate", "bear", "fox", "wolf", "deer", "hog", "house",
-                    "witch", "wood", "wand", "pall", "coat", "smile", "bomb", "pine", "oak", "spruce", "light"]
-    ++  stressing [0,1] ["eclair", "duet", "Paulette", "surprise", "caress"] 
-    ++ stressing [1,0] ["football", "rocket", "monad", "duel", "sparrow", "lion", "entry", "exit", "igloo", "silence", "freedom", "axe-blade", "city",
+    stressing      "X" ["tree", "ball", "sun", "bark", "boat", "gold", "crate", "bear", "fox", "wolf", "deer", "hog", "house",
+                        "witch", "wood", "wand", "pall", "coat", "smile", "bomb", "pine", "oak", "spruce", "light"]
+    ++  stressing "OX" ["eclair", "duet", "Paulette", "surprise", "caress"] 
+    ++ stressing  "XO" ["football", "rocket", "monad", "duel", "sparrow", "lion", "entry", "exit", "igloo", "silence", "freedom", "axe-blade", "city",
                         "poem", "poet", "mystic", "tower", "magic", "logic"]
-    ++ stressing [1,0,0] ["nematode", "element" ]
-    ++ stressing [0,1,0] ["computer", "electron"]
+    ++ stressing "XOX" ["nematode", "element" ]
+    ++ stressing "OXO" ["computer", "electron"]
+
+
+iambic :: StressPattern -> Bool
+iambic []       = True
+iambic ('X':sp) = False
+iambic ('O':sp) = trochaic sp
+
+trochaic :: StressPattern -> Bool
+trochaic []       = True
+trochaic ('O':sp) = False
+trochaic ('X':sp) = iambic sp
 
 structures :: [Structure]
 structures = [ 
@@ -40,6 +52,7 @@ structures = [
                 --trampolining is very challenging
                 -- cry 'havoc' and let slip the dogs of war
              ]
+
 
 
 
