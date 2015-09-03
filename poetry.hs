@@ -1,5 +1,9 @@
 import System.Random
 
+-- cf. http://developer.wordnik.com/docs.html#!/word/getTextPronunciations_get_5
+-- cf. https://en.wikipedia.org/wiki/Arpabet
+-- cf. https://www.wordsapi.com/docs#details
+
 
 type StressPattern = [Int]
 type Wrd = (String, StressPattern)
@@ -36,6 +40,10 @@ structures = [
                 --trampolining is very challenging
                 -- cry 'havoc' and let slip the dogs of war
              ]
+
+
+
+
 
 {-
 <English Sentence> =
