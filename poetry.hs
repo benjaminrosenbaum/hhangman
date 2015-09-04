@@ -7,23 +7,14 @@ import Test.QuickCheck
 
 
 type StressPattern = [Char]
-type Wrd = (String, StressPattern)
+type StressedWrd = (String, StressPattern) 
 
-data PartOfSpeech = N1 | V1 | NS | VS | ADJ | ADV | ART | PREP | PRNOM1 | PRNOMS | PRACC1 | PRACCS | PRNS| CONJ
+data PartOfSpeech = N1 | V1 | NS | VS | ADJ | ADV | ART | PREP | PRNOM1 | PRNOMS | PRACC1 | PRACCS | PRNS| CONJ deriving (Eq, Ord, Enum, Show)
 type Structure = [PartOfSpeech]
 
-stressing :: StressPattern -> [String] -> [Wrd]
-stressing pat ws = zip ws $ repeat pat
-
-singleNouns :: [Wrd]
-singleNouns = 
-    stressing      "X" ["tree", "ball", "sun", "bark", "boat", "gold", "crate", "bear", "fox", "wolf", "deer", "hog", "house",
-                        "witch", "wood", "wand", "pall", "coat", "smile", "bomb", "pine", "oak", "spruce", "light"]
-    ++  stressing "OX" ["eclair", "duet", "Paulette", "surprise", "caress"] 
-    ++ stressing  "XO" ["football", "rocket", "monad", "duel", "sparrow", "lion", "entry", "exit", "igloo", "silence", "freedom", "axe-blade", "city",
-                        "poem", "poet", "mystic", "tower", "magic", "logic"]
-    ++ stressing "XOX" ["nematode", "element" ]
-    ++ stressing "OXO" ["computer", "electron"]
+data WordData = WordData { word :: String, stresses :: StressPattern, partOfSpeech :: PartOfSpeech} deriving (Eq, Ord)
+instance Show WordData where
+     show w = word w
 
 
 iambic :: StressPattern -> Bool
@@ -38,7 +29,11 @@ trochaic ('X':sp) = iambic sp
 
 structures :: [Structure]
 structures = [ 
+                [ART, N1, V1],
+                [ART, ADJ, ADJ, N1, V1, ADV],
+                [NS, VS, NS, CONJ, NS, VS, NS],
                 --it is the east and juliet is the sun
+                [N1, V1, ART, N1, CONJ, N1, V1, ART, N1],
                 --And they shall fetch thee jewels from the deep
                 [CONJ, NS, VS, NS, NS, PREP, ART, N1],
                 --we will perform in measure, time and place
@@ -53,9 +48,102 @@ structures = [
                 -- cry 'havoc' and let slip the dogs of war
              ]
 
+pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
 
-pickIambicNoun = generate $ suchThat (elements singleNouns) (\w -> iambic snd w)
 
+-- making word lists
+
+words :: [WordData]
+words = singularNouns ++ pluralNouns ++ articles ++ adjectives ++ singularVerbs ++ pluralVerbs
+
+as :: PartOfSpeech -> [StressedWrd] -> [WordData]
+as p sws = map (\sw -> WordData (fst sw) (snd sw) p) sws
+
+stressing :: StressPattern -> [String] -> [StressedWrd]
+stressing pat ws = zip ws $ repeat pat
+
+--we can autopluralize words if the stress doesn't change
+backwardsPluralize :: String -> String 
+backwardsPluralize ('h':'c':cs)     = "sehc" ++ cs 
+backwardsPluralize ('h':'s':cs)     = "sehs" ++ cs 
+backwardsPluralize ('n':'a':'m':cs) =  "nem" ++ cs 
+backwardsPluralize ('y':cs)         =  "sei" ++ cs 
+backwardsPluralize ('s':cs)         =  "ses" ++ cs 
+backwardsPluralize ('x':cs)         =  "sex" ++ cs 
+backwardsPluralize ('f':cs)         =  "sev" ++ cs
+backwardsPluralize cs = 's':cs
+
+pluralize :: String -> String
+pluralize w = reverse $ backwardsPluralize $ reverse w
+
+pluralizeAll :: [StressedWrd] -> [StressedWrd]
+pluralizeAll = map pl where pl (w, sp) = ((pluralize w), sp)
+
+baseNouns :: [StressedWrd]
+baseNouns = stressing        "X" ["tree", "ball", "sun", "bark", "boat", "gold", "crate", "bear", "hog", "wood", "wand", "food",
+                                          "pall", "coat", "smile", "bomb", "pine", "oak", "spruce", "light", "deep", "love"]
+            ++ stressing    "OX" ["eclair", "duet", "Paulette"] 
+            ++ stressing    "XO" ["football", "rocket", "monad", "duel", "sparrow", "lion", "entry", "exit", "igloo", "silence", "freedom", "axe-blade", "city",
+                                  "poem", "poet", "mystic", "tower", "magic", "logic", "music", "chickpea", "snowman", "novel", "wisdom", "jewel",
+                                  "octave"]
+            ++ stressing    "XOX" ["nematode", "element", "temperature", "cigarette", "magazine" ]
+            ++ stressing    "XOO" ["novelist", "destiny", "government", "family" ]
+            ++ stressing    "OXO" ["computer", "electron", "investment", "decision"]
+            ++ stressing   "OXOX" ["community", "electrolyte" ]
+            ++ stressing   "XOXO" ["information", "understanding", "television", "combination"]
+            ++ stressing  "OXOXO" []
+            ++ stressing  "XOXOX" []
+            ++ stressing "OXOXOX" []
+            ++ stressing "XOXOXO" ["prestidigitation"]
+
+singularNouns :: [WordData]
+singularNouns = as N1 $
+    stressing        "X"  ["deer", "sheep", "fish", "fox", "house", "witch", "flesh"]
+    ++ stressing    "OX"  ["surprise", "caress"] 
+    ++ stressing    "XO"  []
+    ++ stressing    "XOX" []
+    ++ stressing    "XOO" []
+    ++ stressing    "OXO" []
+    ++ stressing   "OXOX" []
+    ++ stressing   "XOXO" ["economics"]
+    ++ stressing  "OXOXO" []
+    ++ stressing  "XOXOX" []
+    ++ stressing "OXOXOX" []
+    ++ stressing "XOXOXO" []
+    ++ baseNouns
+
+pluralNouns :: [WordData]
+pluralNouns = as NS $ 
+    stressing        "X" ["deer", "sheep", "fish"]
+    ++ stressing    "XO" ["foxes", "houses", "witches"]
+    ++ stressing   "OXO" ["surprises", "caresses"]
+    ++ pluralizeAll baseNouns
+
+articles :: [WordData]
+articles = as ART $ stressing "O" ["the", "your", "my", "their", "some", "one"] --TODO plural articles and a/an have their own rules
+
+adjectives :: [WordData]
+adjectives = as ADJ $ 
+    stressing        "X"  ["bad", "good", "white", "black", "red", "gray", "damned", "dear", "mad", "old", "fresh", "sweet",
+                           "numb", "broad", "peach", "plumb"]
+    ++ stressing    "OX"  ["austere", "aligned", "opaque"] 
+    ++ stressing    "XO"  ["foolish", "willing", "pompous", "golden", "orange", "purple", "simple"]
+    ++ stressing    "OXO" ["elided", "attractive", "appalling", "transparent"]
+    ++ stressing    "XOX" []
+    ++ stressing   "OXOX" ["excitable", "intransigent"]
+
+baseVerbs :: [StressedWrd]    --consider tense, mood, transitivity
+baseVerbs = stressing        "X" ["age", "fall", "move", "mourn", "eat", "climb", "glide", "crawl", "soar", "plot", "wave", "love",
+                                          "lose", "greet", "smile", "bomb", "pine", "run", "give", "light", "cry"]
+            ++ stressing    "OX" ["become", "allow", "entrance", "annoy", "regard"] 
+            ++ stressing    "XO" ["wonder", "wander", "sicken", "blacken", "coarsen" {- <= intransitive -} ]
+            ++ stressing   "OXO" ["enlighten", "devour"]  
+  
+singularVerbs :: [WordData]
+singularVerbs = as V1 $  pluralizeAll baseVerbs
+
+pluralVerbs :: [WordData]
+pluralVerbs = as VS $ baseVerbs 
 
 
 {-
