@@ -1,5 +1,6 @@
 import System.Random
 import Test.QuickCheck
+import Data.List
 
 -- cf. http://developer.wordnik.com/docs.html#!/word/getTextPronunciations_get_5
 -- cf. https://en.wikipedia.org/wiki/Arpabet
@@ -51,10 +52,21 @@ structures = [
 pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
 
 
+
+conforms :: StressPattern -> Structure -> [WordData] -> Bool
+conforms pattern structure wds = let ss = concatMap stresses wds
+                                     ps = map partOfSpeech wds
+                                 in (ss `isPrefixOf` pattern) && (ps `isPrefixOf` structure)
+
+isValidAddition :: StressPattern -> Structure -> [WordData] -> WordData -> Bool
+isValidAddition pattern structure soFar newWord = (not $ newWord `elem` soFar) && (conforms pattern structure $ soFar ++ [newWord]) 
+
+
+
 -- making word lists
 
 words :: [WordData]
-words = singularNouns ++ pluralNouns ++ articles ++ adjectives ++ singularVerbs ++ pluralVerbs
+words = singularNouns ++ pluralNouns ++ articles ++ adjectives ++ adverbs ++ prepositions ++ conjunctions ++ singularVerbs ++ pluralVerbs
 
 as :: PartOfSpeech -> [StressedWrd] -> [WordData]
 as p sws = map (\sw -> WordData (fst sw) (snd sw) p) sws
@@ -127,10 +139,32 @@ adjectives = as ADJ $
     stressing        "X"  ["bad", "good", "white", "black", "red", "gray", "damned", "dear", "mad", "old", "fresh", "sweet",
                            "numb", "broad", "peach", "plumb"]
     ++ stressing    "OX"  ["austere", "aligned", "opaque"] 
-    ++ stressing    "XO"  ["foolish", "willing", "pompous", "golden", "orange", "purple", "simple"]
+    ++ stressing    "XO"  ["foolish", "willing", "pompous", "golden", "orange", "purple", "simple", "oval", "novel", "higher"]
     ++ stressing    "OXO" ["elided", "attractive", "appalling", "transparent"]
     ++ stressing    "XOX" []
+    ++ stressing    "XOO" ["ignorant"]
     ++ stressing   "OXOX" ["excitable", "intransigent"]
+
+adverbs :: [WordData]
+adverbs = as ADV $ 
+    stressing        "X"  ["now", "then", "once", "still", "well"]
+    ++ stressing    "OX"  ["enough"] 
+    ++ stressing    "XO"  ["numbly", "gladly", "harshly", "boldly", "darkly", "brightly", "simply"]
+    ++ stressing    "OXO" ["obtusely", "correctly", "abruptly", "austerely"]
+    ++ stressing    "XOX" []
+    ++ stressing    "XOO" ["terribly"]
+    ++ stressing   "OXOX" ["excitably", "transparently"]
+
+
+prepositions :: [WordData]
+prepositions = as PREP $ 
+    stressing        "O"  ["of", "on", "in", "from", "while", "by", "with", "when"]
+    ++ stressing    "OX"  ["beyond", "beside", "beneath", "above"] 
+
+
+conjunctions :: [WordData]
+conjunctions = as PREP $ 
+    stressing        "O"  ["and", "or", "but", "since"] 
 
 baseVerbs :: [StressedWrd]    --consider tense, mood, transitivity
 baseVerbs = stressing        "X" ["age", "fall", "move", "mourn", "eat", "climb", "glide", "crawl", "soar", "plot", "wave", "love",
@@ -138,6 +172,7 @@ baseVerbs = stressing        "X" ["age", "fall", "move", "mourn", "eat", "climb"
             ++ stressing    "OX" ["become", "allow", "entrance", "annoy", "regard"] 
             ++ stressing    "XO" ["wonder", "wander", "sicken", "blacken", "coarsen" {- <= intransitive -} ]
             ++ stressing   "OXO" ["enlighten", "devour"]  
+            ++ stressing  "OXOX" ["electrify", "abominate"]  
   
 singularVerbs :: [WordData]
 singularVerbs = as V1 $  pluralizeAll baseVerbs
@@ -258,3 +293,14 @@ pluralVerbs = as VS $ baseVerbs
     <Independent Clause> <Dependent Clause> 
 
 -}
+
+
+--TESTS
+
+pattern = "OXOXOX"
+structure = [NS, VS, NS, CONJ, NS, VS, NS]
+
+eclairs = WordData "eclairs" "OX" NS
+provide = WordData "provide" "OX" VS
+frag = [eclairs, provide]
+abhor = WordData "abhor" "OX" VS
