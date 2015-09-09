@@ -51,7 +51,7 @@ structures = [
 
 pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
 
-
+type Equator a = ([a] -> [a] -> Bool) -- a needs to be Eq a, but not sure how
 
 conforms :: StressPattern -> Structure -> [WordData] -> Bool
 conforms pattern structure wds = let ss = concatMap stresses wds
@@ -60,6 +60,8 @@ conforms pattern structure wds = let ss = concatMap stresses wds
 
 isValidAddition :: StressPattern -> Structure -> [WordData] -> WordData -> Bool
 isValidAddition pattern structure soFar newWord = (not $ newWord `elem` soFar) && (conforms pattern structure $ soFar ++ [newWord]) 
+
+type AdditionValidator = ([WordData] -> WordData -> Bool)
 
 
 
