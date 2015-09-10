@@ -1,6 +1,7 @@
 import System.Random
 import Test.QuickCheck
 import Data.List
+import Control.Monad
 
 -- cf. http://developer.wordnik.com/docs.html#!/word/getTextPronunciations_get_5
 -- cf. https://en.wikipedia.org/wiki/Arpabet
@@ -16,6 +17,9 @@ type Structure = [PartOfSpeech]
 data WordData = WordData { word :: String, stresses :: StressPattern, partOfSpeech :: PartOfSpeech} deriving (Eq, Ord)
 instance Show WordData where
      show w = word w
+
+type Vocabulary = [WordData]
+type Sentence = [WordData]
 
 
 iambic :: StressPattern -> Bool
@@ -33,6 +37,8 @@ structures = [
                 [ART, N1, V1],
                 [ART, ADJ, ADJ, N1, V1, ADV],
                 [NS, VS, NS, CONJ, NS, VS, NS],
+                [NS, VS, ADJ, NS, CONJ, NS, VS, NS],
+                [NS, VS, ADV, ADJ, NS, CONJ, NS, VS, NS],
                 --it is the east and juliet is the sun
                 [N1, V1, ART, N1, CONJ, N1, V1, ART, N1],
                 --And they shall fetch thee jewels from the deep
@@ -49,26 +55,41 @@ structures = [
                 -- cry 'havoc' and let slip the dogs of war
              ]
 
-pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
+--TODO pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
 
 type Equator a = ([a] -> [a] -> Bool) -- a needs to be Eq a, but not sure how
 
-conforms :: StressPattern -> Structure -> [WordData] -> Bool
+conforms :: StressPattern -> Structure -> Sentence -> Bool
 conforms pattern structure wds = let ss = concatMap stresses wds
                                      ps = map partOfSpeech wds
                                  in (ss `isPrefixOf` pattern) && (ps `isPrefixOf` structure)
 
-isValidAddition :: StressPattern -> Structure -> [WordData] -> WordData -> Bool
+isValidAddition :: StressPattern -> Structure -> Sentence -> WordData -> Bool
 isValidAddition pattern structure soFar newWord = (not $ newWord `elem` soFar) && (conforms pattern structure $ soFar ++ [newWord]) 
 
-type AdditionValidator = ([WordData] -> WordData -> Bool)
+type AdditionValidator = (Sentence -> WordData -> Bool)
 
+eitherIsValid :: AdditionValidator -> AdditionValidator -> AdditionValidator
+eitherIsValid a b = (\ws w -> (a ws w) || (b ws w))
+
+isValidForStructures :: StressPattern -> AdditionValidator
+isValidForStructures pattern = let validators    = map (isValidAddition pattern) structures
+                               in foldl1 eitherIsValid validators
+
+
+--TODO does this already exist?
+append :: [a] -> Maybe a -> Maybe [a]
+append xs Nothing = Nothing
+append xs (Just x) = Just (xs ++ [x])
+
+lengthen :: AdditionValidator -> Vocabulary -> Sentence -> Maybe Sentence
+lengthen isValid vocab soFar = soFar `append` (find (isValid soFar) vocab)
 
 
 -- making word lists
 
-words :: [WordData]
-words = singularNouns ++ pluralNouns ++ articles ++ adjectives ++ adverbs ++ prepositions ++ conjunctions ++ singularVerbs ++ pluralVerbs
+vocabulary :: Vocabulary
+vocabulary = singularNouns ++ pluralNouns ++ articles ++ adjectives ++ adverbs ++ prepositions ++ conjunctions ++ singularVerbs ++ pluralVerbs
 
 as :: PartOfSpeech -> [StressedWrd] -> [WordData]
 as p sws = map (\sw -> WordData (fst sw) (snd sw) p) sws
@@ -306,3 +327,10 @@ eclairs = WordData "eclairs" "OX" NS
 provide = WordData "provide" "OX" VS
 frag = [eclairs, provide]
 abhor = WordData "abhor" "OX" VS
+
+iambPhrase = isValidForStructures "OXOXOXOX" 
+dactylPhrase = isValidForStructures "XOOXOOXOO"
+
+moreIambs = lengthen iambPhrase vocabulary
+bestIambs = last $ takeWhile (\n -> n /= Nothing) $ iterate (>>= moreIambs) (Just frag)
+
