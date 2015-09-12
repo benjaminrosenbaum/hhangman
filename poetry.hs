@@ -356,6 +356,6 @@ abhor = WordData "abhor" "OX" VS
 iambPhrase = isValidForStructures "OXOXOXOX" 
 dactylPhrase = isValidForStructures "XOOXOOXOO"
 
-moreIambs = attemptAddition "OXOXOXOXOX"
+moreIambs = attemptAddition "OXOXOXOXOX" vocabulary
 bestIambs = last $ takeWhile (\n -> n /= Nothing) $ iterate (>>= moreIambs) (Just frag)
 
