@@ -2,6 +2,7 @@ import System.Random
 import Test.QuickCheck
 import Data.List
 import Control.Monad
+import Data.Monoid
 
 -- cf. http://developer.wordnik.com/docs.html#!/word/getTextPronunciations_get_5
 -- cf. https://en.wikipedia.org/wiki/Arpabet
@@ -64,6 +65,12 @@ conforms pattern structure wds = let ss = concatMap stresses wds
                                      ps = map partOfSpeech wds
                                  in (ss `isPrefixOf` pattern) && (ps `isPrefixOf` structure)
 
+fulfills :: StressPattern -> Structure -> Sentence -> Bool
+fulfills pattern structure wds = let ss = concatMap stresses wds
+                                     ps = map partOfSpeech wds
+                                 in (ss == pattern) && (ps == structure)
+
+
 isValidAddition :: StressPattern -> Structure -> Sentence -> WordData -> Bool
 isValidAddition pattern structure soFar newWord = (not $ newWord `elem` soFar) && (conforms pattern structure $ soFar ++ [newWord]) 
 
@@ -72,9 +79,20 @@ type AdditionValidator = (Sentence -> WordData -> Bool)
 eitherIsValid :: AdditionValidator -> AdditionValidator -> AdditionValidator
 eitherIsValid a b = (\ws w -> (a ws w) || (b ws w))
 
+-- ANDing of binary predicates
+infixr 3 ^&&
+(^&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
+p ^&& q = \a b -> (p a b) && (q a b) 
+
+-- ORing of binary predicates
+infixr 2 ^||
+(^||) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
+p ^|| q = \a b -> (p a b) || (q a b) 
+
+
 isValidForStructures :: StressPattern -> AdditionValidator
-isValidForStructures pattern = let validators    = map (isValidAddition pattern) structures
-                               in foldl1 eitherIsValid validators
+isValidForStructures pattern = let validators    = map (isValidAddition pattern) structures --TODO consider eliminating global reference "structures"
+                               in foldl1 (^||) validators
 
 
 --TODO does this already exist?
@@ -84,6 +102,13 @@ append xs (Just x) = Just (xs ++ [x])
 
 lengthen :: AdditionValidator -> Vocabulary -> Sentence -> Maybe Sentence
 lengthen isValid vocab soFar = soFar `append` (find (isValid soFar) vocab)
+
+attemptAddition :: StressPattern -> Vocabulary -> Sentence -> Maybe Sentence
+attemptAddition pattern vocab = lengthen (isValidForStructures pattern) vocab
+
+--produce :: StressPattern -> Vocabulary -> Sentence -> [WordData] -> Maybe Sentence
+--produce pattern vocab soFar rejects 
+--  |  
 
 
 -- making word lists
@@ -331,6 +356,6 @@ abhor = WordData "abhor" "OX" VS
 iambPhrase = isValidForStructures "OXOXOXOX" 
 dactylPhrase = isValidForStructures "XOOXOOXOO"
 
-moreIambs = lengthen iambPhrase vocabulary
+moreIambs = attemptAddition "OXOXOXOXOX"
 bestIambs = last $ takeWhile (\n -> n /= Nothing) $ iterate (>>= moreIambs) (Just frag)
 
