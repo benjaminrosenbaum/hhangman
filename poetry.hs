@@ -22,6 +22,8 @@ data WordData = WordData { word :: String, stresses :: StressPattern, partOfSpee
 instance Show WordData where
      show w = word w
 
+data SentenceModel = SentenceModel { stressPatterns :: StressPattern, partsOfSpeech :: Structure } deriving (Eq)     
+
 type Vocabulary = [WordData]
 type Sentence = [WordData]
 
@@ -61,12 +63,37 @@ structures = [
 
 --TODO pickIambicNoun = generate $ suchThat (elements singularNouns) (\w -> iambic $ stresses w)
 
-type Equator a = ([a] -> [a] -> Bool) -- a needs to be Eq a, but not sure how
+type Equator a = (a -> a -> Bool) -- a needs to be Eq a, but not sure how
+
+modelOf :: Sentence -> SentenceModel
+modelOf wds = let strs = concatMap stresses wds
+                  struc = map partOfSpeech wds
+              in (SentenceModel strs struc)
+
+type ModelComparisonPredicate = (SentenceModel -> SentenceModel -> Bool)
+
+{--compareModels :: ModelComparisonPredicateOperations -> SentenceModel -> SentenceModel -> Bool
+compareModels ops s1 s2 = let ps1 = partsOfSpeech s1
+                              ps2 = partsOfSpeech s2
+                          in ((fst ops) (stressPatterns s1) (stressPatterns s2)) && (snd ops) ps2 ps2
+  
+--fullyMatches :: ModelComparisonPredicate
+--fullyMatches = compareModels ((==), (==))
+--}
+
+partiallyMatches :: ModelComparisonPredicate
+partiallyMatches actual canonical = ((stressPatterns actual) `isPrefixOf` (stressPatterns canonical)) && ((partsOfSpeech actual) `isPrefixOf` (partsOfSpeech canonical))
+
+fullyMatches :: ModelComparisonPredicate
+fullyMatches actual canonical = ((stressPatterns actual) == (stressPatterns canonical)) && ((partsOfSpeech actual) == (partsOfSpeech canonical))
+
+ 
 
 conforms :: StressPattern -> Structure -> Sentence -> Bool
 conforms pattern structure wds = let ss = concatMap stresses wds
                                      ps = map partOfSpeech wds
                                  in (ss `isPrefixOf` pattern) && (ps `isPrefixOf` structure)
+
 
 fulfills :: StressPattern -> Structure -> Sentence -> Bool
 fulfills pattern structure wds = let ss = concatMap stresses wds
@@ -74,13 +101,15 @@ fulfills pattern structure wds = let ss = concatMap stresses wds
                                  in (ss == pattern) && (ps == structure)
 
 
+
+
 isValidAddition :: StressPattern -> Structure -> Sentence -> WordData -> Bool
 isValidAddition pattern structure soFar newWord = (not $ newWord `elem` soFar) && (conforms pattern structure $ soFar ++ [newWord]) 
 
 type AdditionValidator = (Sentence -> WordData -> Bool)
 
-eitherIsValid :: AdditionValidator -> AdditionValidator -> AdditionValidator
-eitherIsValid a b = (\ws w -> (a ws w) || (b ws w))
+--eitherIsValid :: AdditionValidator -> AdditionValidator -> AdditionValidator
+--eitherIsValid a b = (\ws w -> (a ws w) || (b ws w))
 
 -- ANDing of binary predicates
 infixr 3 ^&&
@@ -220,16 +249,18 @@ conjunctions = as PREP $
 baseVerbs :: [StressedWrd]    --consider tense, mood, transitivity
 baseVerbs = stressing        "X" ["age", "fall", "move", "mourn", "eat", "climb", "glide", "crawl", "soar", "plot", "wave", "love",
                                           "lose", "greet", "smile", "bomb", "pine", "run", "give", "light", "cry"]
-            ++ stressing    "OX" ["become", "allow", "entrance", "annoy", "regard"] 
+            ++ stressing    "OX" ["become", "allow", "entrance", "regard"] 
             ++ stressing    "XO" ["wonder", "wander", "sicken", "blacken", "coarsen" {- <= intransitive -} ]
             ++ stressing   "OXO" ["enlighten", "devour"]  
             ++ stressing  "OXOX" ["electrify", "abominate"]  
   
 singularVerbs :: [WordData]
-singularVerbs = as V1 $  pluralizeAll baseVerbs
+singularVerbs = as V1 $  pluralizeAll baseVerbs ++
+              stressing    "OX" ["annoys"]
 
 pluralVerbs :: [WordData]
-pluralVerbs = as VS $ baseVerbs 
+pluralVerbs = as VS $ baseVerbs  ++
+              stressing    "OX" ["annoy"]
 
 
 {-
