@@ -1,5 +1,6 @@
 
 import Data.List 
+import Data.Functor
 import Data.Char
 import Control.Monad
 
