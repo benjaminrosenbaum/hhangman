@@ -1,5 +1,3 @@
--- Read more about this program in the official Elm guide:
--- https://guide.elm-lang.org/architecture/effects/http.html
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
