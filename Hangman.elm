@@ -7,6 +7,7 @@ import Html.Events exposing (..)
 import Http
 import Json.Decode as Decode 
 import Regex
+import Char
 
 
 
@@ -31,7 +32,7 @@ type alias Model =
   }
 
 init : (Model, Cmd Msg)
-init = (Model "" Nothing [], Cmd.none)
+init = (Model "" Nothing ['a', 'b', 'c', 'd'], Cmd.none)
 
 
 -- UPDATE
@@ -40,6 +41,7 @@ init = (Model "" Nothing [], Cmd.none)
 type Msg
   = RefreshWord
   | NewWord (Result Http.Error (List String))
+  | NewGuess String
 
 
 isScrabblish : String -> Bool
@@ -47,6 +49,13 @@ isScrabblish contents = Regex.contains (Regex.regex "^[a-z]*$") contents
   
 firstScrabblish : (List String) -> Maybe String
 firstScrabblish items = items |> List.filter isScrabblish |> List.head 
+
+addGuess : String -> Model -> Model
+addGuess guess model = 
+  let g = String.toLower guess
+      old = String.fromList model.guesses 
+      updated = if String.contains g old then old else old ++ g
+  in Model model.word model.error (String.toList updated)
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -57,13 +66,16 @@ update msg model =
 
     NewWord (Ok newWords) ->
       let word = firstScrabblish newWords |> Maybe.withDefault ""
-          guesses = []
+          guesses = model.guesses
       in (Model word Nothing guesses, Cmd.none)    
 
     NewWord (Err err) ->
       let error = Just (toString err)
-          guesses = []
+          guesses = model.guesses
       in (Model "" error guesses, Cmd.none)
+
+    NewGuess guess ->
+      (addGuess guess model, Cmd.none)
 
 
 -- VIEW
@@ -71,8 +83,10 @@ update msg model =
 board : Model -> String
 --board s = intersperse ' ' $ map (\c -> if c `elem` guesses s then (toUpper c) else '_') $ word s
 board m = m.word
-          |> String.split ""
-          |> String.join " " 
+          |> String.toList
+          |> List.map (\c -> if List.member c m.guesses then Char.toUpper c else '_')
+          |> List.intersperse ' '
+          |> String.fromList
 
 
 view : Model -> Html Msg
@@ -82,6 +96,7 @@ view model =
       div []
         [ div [] [pre [] [text (board model)]]
           , h2 [] [text model.word]
+          , input [ placeholder "Guess", onInput NewGuess, style [] ] []
           , button [ onClick RefreshWord ] [ text ">>Fetch A New Secret Word<<" ]
         ]
 
