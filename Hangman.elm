@@ -22,18 +22,23 @@ main =
 
 -- MODEL
 
+type alias Guess = Char 
 
-type alias Model = Maybe String
+type alias Model = 
+  { word : String,
+    error : Maybe String
+  , guesses : List Guess
+  }
 
 init : (Model, Cmd Msg)
-init = (Nothing, Cmd.none)
+init = (Model "" Nothing [], Cmd.none)
 
 
 -- UPDATE
 
 
 type Msg
-  = MorePlease
+  = RefreshWord
   | NewWord (Result Http.Error (List String))
 
 
@@ -47,26 +52,44 @@ firstScrabblish items = items |> List.filter isScrabblish |> List.head
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    MorePlease ->
+    RefreshWord ->
       (model, getRandomWords)
 
     NewWord (Ok newWords) ->
-      (firstScrabblish newWords, Cmd.none) 
+      let word = firstScrabblish newWords |> Maybe.withDefault ""
+          guesses = []
+      in (Model word Nothing guesses, Cmd.none)    
 
     NewWord (Err err) ->
-      (Just (toString err), Cmd.none)
-
+      let error = Just (toString err)
+          guesses = []
+      in (Model "" error guesses, Cmd.none)
 
 
 -- VIEW
 
+board : Model -> String
+--board s = intersperse ' ' $ map (\c -> if c `elem` guesses s then (toUpper c) else '_') $ word s
+board m = m.word
+          |> String.split ""
+          |> String.join " " 
+
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ h2 [] [text (Maybe.withDefault "--" model)]
-    , button [ onClick MorePlease ] [ text ">>Fetch<<" ]
-    ]
+  case model.error of
+    Nothing ->
+      div []
+        [ div [] [pre [] [text (board model)]]
+          , h2 [] [text model.word]
+          , button [ onClick RefreshWord ] [ text ">>Fetch A New Secret Word<<" ]
+        ]
+
+    Just errorMessage ->
+      div []
+        [ h2 [] [text ("Error retrieving secret word: " ++ errorMessage)]
+          , button [ onClick RefreshWord ] [ text ">>Try Again<<" ]
+        ]  
 
 
 
