@@ -1,13 +1,15 @@
 -- Read more about this program in the official Elm guide:
 -- https://guide.elm-lang.org/architecture/effects/http.html
 
+module Hangman exposing (..)
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Http
-import Json.Decode as Decode 
-import Regex
 import Char
+import Http
+import RandomWords 
+
 
 
 
@@ -32,7 +34,7 @@ type alias Model =
   }
 
 init : (Model, Cmd Msg)
-init = (Model "" Nothing ['a', 'b', 'c', 'd'], Cmd.none)
+init = (Model "" Nothing [], Cmd.none)
 
 
 -- UPDATE
@@ -44,11 +46,10 @@ type Msg
   | NewGuess String
 
 
-isScrabblish : String -> Bool
-isScrabblish contents = Regex.contains (Regex.regex "^[a-z]*$") contents 
-  
-firstScrabblish : (List String) -> Maybe String
-firstScrabblish items = items |> List.filter isScrabblish |> List.head 
+refreshWord : (List String) -> Model -> Model
+refreshWord newWords model =
+  let word = RandomWords.selectWord newWords
+  in Model word Nothing []
 
 addGuess : String -> Model -> Model
 addGuess guess model = 
@@ -62,17 +63,14 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     RefreshWord ->
-      (model, getRandomWords)
+      (model, RandomWords.getRandomWords NewWord)
 
     NewWord (Ok newWords) ->
-      let word = firstScrabblish newWords |> Maybe.withDefault ""
-          guesses = model.guesses
-      in (Model word Nothing guesses, Cmd.none)    
+      (refreshWord newWords model, Cmd.none)    
 
     NewWord (Err err) ->
       let error = Just (toString err)
-          guesses = model.guesses
-      in (Model "" error guesses, Cmd.none)
+      in (Model "" error [], Cmd.none)
 
     NewGuess guess ->
       (addGuess guess model, Cmd.none)
@@ -81,7 +79,6 @@ update msg model =
 -- VIEW
 
 board : Model -> String
---board s = intersperse ' ' $ map (\c -> if c `elem` guesses s then (toUpper c) else '_') $ word s
 board m = m.word
           |> String.toList
           |> List.map (\c -> if List.member c m.guesses then Char.toUpper c else '_')
@@ -96,7 +93,7 @@ view model =
       div []
         [ div [] [pre [] [text (board model)]]
           , h2 [] [text model.word]
-          , input [ placeholder "Guess", onInput NewGuess, style [] ] []
+          , input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] []
           , button [ onClick RefreshWord ] [ text ">>Fetch A New Secret Word<<" ]
         ]
 
@@ -117,25 +114,3 @@ subscriptions model =
 
 
 
--- HTTP
-
-
-getWordsUrl : Int -> String
-getWordsUrl n = let prefix = "http://api.wordnik.com/v4/words.json/randomWords?hasDictionaryDef=true&minCorpusCount=0"
-                    range  = "minLength=5&maxLength=15"
-                    limit  = "limit=" ++ (toString n) 
-                    key    = "api_key=a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5"
-                in String.concat ( List.intersperse "&" [prefix, range, limit, key] )
-
-
-getRandomWords : Cmd Msg
-getRandomWords =
-  let
-    url = getWordsUrl 10
-  in
-    Http.send NewWord (Http.get url decodeWords)
-
-
-decodeWords : Decode.Decoder (List String)
-decodeWords =
-  Decode.list (Decode.at ["word"] Decode.string)
