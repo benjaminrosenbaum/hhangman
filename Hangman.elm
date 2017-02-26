@@ -39,7 +39,7 @@ type alias Model =
   }
 
 init : (Model, Cmd Msg)
-init = (Model "" Nothing Set.empty Undecided, Cmd.none)
+init = (Model "" Nothing Set.empty Undecided, RandomWords.getRandomWords NewWord)
 
 wordChars : Model -> Set Char
 wordChars m = String.toList m.word |> Set.fromList
@@ -105,63 +105,74 @@ update msg model =
 
 -- VIEW
 
-board : Model -> String
+type alias ViewSnippet = Model -> String
+
+board : ViewSnippet
 board m = m.word
           |> String.toList
           |> List.map (\c -> if Set.member c m.guesses then Char.toUpper c else '_')
           |> List.intersperse ' '
           |> String.fromList
 
-picture : Model -> String
+picture : ViewSnippet
 picture m = mistakes m 
             |> Set.size
             |> Drawing.drawAtStep
 
-wrongSoFar : Model -> String
-wrongSoFar m = mistakes m 
+wrongSoFar : ViewSnippet
+wrongSoFar m = 
+      let wrong = mistakes m 
                |> Set.map Char.toUpper
                |> Set.toList
                |> List.sort
                |> List.intersperse ','
                |> String.fromList
+      in if 0 < String.length wrong then "Wrong guesses: " ++ wrong else ""
 
   
-gameResult : Model -> String 
+gameResult : ViewSnippet 
 gameResult m = case m.result of 
                  Undecided -> ""
                  Lost      -> "\n YOU LOST!\n\n\n"
                  Won       -> "\n YOU WON!!\n\n\n"
 
+
+reveal : Model -> Html Msg
+reveal m = h3 [] [text ("The word was: " ++ m.word)]
+
+inputGuess : Html Msg
+inputGuess = input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] []
+
+refreshButton : String -> Html Msg
+refreshButton caption = button [ onClick RefreshWord ] [ text (">>" ++ caption ++ "<<") ] 
+
+viewSnippet : ViewSnippet -> Model -> Html Msg
+viewSnippet v m = div [] [pre [] [text (v m)]]
+
+viewSnippets : List ViewSnippet -> Model -> List (Html Msg)
+viewSnippets vs m = List.map (\v -> viewSnippet v m) vs
+
+framed : List (Html Msg) -> String -> Html Msg
+framed elements caption =  div [ style [("padding", "20px")] ] (elements ++ [refreshButton caption] )
+
+
 view : Model -> Html Msg
 view model =
   case (model.error, model.result) of
     (Nothing, Undecided) ->
-      div [ style [] ]
-        [ div [] [pre [] [text (board model)]]
-          , div [] [pre [] [text (picture model)]]
-          , div [] [pre [] [text ("Wrong guesses so far: " ++ (wrongSoFar model))]]
-          , div [] [pre [] [text (gameResult model)]]
-          , h2 [] [text (">>" ++ model.word)]
-          , input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] []
-          , button [ onClick RefreshWord ] [ text ">>Fetch A New Secret Word<<" ]
-        ]
+      let snippets = viewSnippets [board, picture, wrongSoFar] model
+      in framed (snippets ++ [ inputGuess ]) "Try A New Secret Word"
 
-    (Nothing, _) ->
-       div []
-        [ div [] [pre [] [text (board model)]]
-          , div [] [pre [] [text (picture model)]]
-          , div [] [pre [] [text ("Wrong guesses: " ++ (wrongSoFar model))]]
-          , div [] [pre [] [text (gameResult model)]]
-          , h2 [] [text ("The word was: " ++ model.word)]
-          , button [ onClick RefreshWord ] [ text ">>Fetch A New Secret Word<<" ]
-        ]
+    (Nothing, Lost) ->
+       let snippets = viewSnippets [board, picture, wrongSoFar, gameResult] model
+       in framed (snippets ++ [reveal model]) "Try Again"
+
+    (Nothing, Won) ->
+       let snippets = viewSnippets [board, picture, wrongSoFar, gameResult] model
+       in framed snippets "Try Again"
 
     (Just errorMessage, _) ->
-      div []
-        [ h2 [] [text ("Error retrieving secret word: " ++ errorMessage)]
-          , button [ onClick RefreshWord ] [ text ">>Try Again<<" ]
-        ]  
-
+      framed [ h2 [] [text ("Error retrieving secret word: " ++ errorMessage)] ] "Try Again"
 
 
 -- SUBSCRIPTIONS

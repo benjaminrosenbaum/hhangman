@@ -24,6 +24,8 @@ selectWord newWords = firstScrabblish newWords |> Maybe.withDefault ""
 -- PRIVATE
 
 --TODO: difficulty levels as corpus count log: 0 = hard, 1000 = middle, 100000 = easy 
+-- or we could do it based on http://api.wordnik.com:80/v4/word.json/the/frequency?useCanonical=false&startYear=1800&endYear=2012&api_key=a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5
+-- and extract totalCount from the return {}. At present, {  "totalCount": 4414284 }
 
 
 getWordsUrl : Int -> String
