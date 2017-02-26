@@ -141,7 +141,7 @@ reveal : Model -> Html Msg
 reveal m = h3 [] [text ("The word was: " ++ m.word)]
 
 inputGuess : Html Msg
-inputGuess = div [][ [input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] []]
+inputGuess = div [][input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] [] ] 
 
 refreshButton : String -> Html Msg
 refreshButton caption = button [ onClick RefreshWord ] [ text (">>" ++ caption ++ "<<") ] 
