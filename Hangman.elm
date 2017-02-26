@@ -1,5 +1,3 @@
--- Read more about this program in the official Elm guide:
--- https://guide.elm-lang.org/architecture/effects/http.html
 
 module Hangman exposing (..)
 
