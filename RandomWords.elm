@@ -23,6 +23,8 @@ selectWord newWords = firstScrabblish newWords |> Maybe.withDefault ""
 
 -- PRIVATE
 
+--TODO: difficulty levels as corpus count log: 0 = hard, 1000 = middle, 100000 = easy 
+
 
 getWordsUrl : Int -> String
 getWordsUrl n = let prefix = "http://api.wordnik.com/v4/words.json/randomWords?hasDictionaryDef=true&minCorpusCount=0"
