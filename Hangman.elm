@@ -77,11 +77,11 @@ addGuess guess model =
       old = String.fromList (Set.toList model.guesses) 
       updated = if String.contains g old then old else old ++ g
       newGuesses = String.toList updated |> Set.fromList
-  in Model model.word model.error newGuesses model.result |> calcResult
+  in { model | guesses = newGuesses } |> calcResult
 
 calcResult : Model -> Model
-calcResult m = Model m.word m.error m.guesses (result m)
- 
+calcResult m = { m | result = result m }
+  
 setError : Http.Error -> Model -> Model
 setError err model = 
    let error = Just (toString err)
@@ -138,8 +138,8 @@ gameResult m = case m.result of
 
 
 reveal : Model -> Html Msg
-reveal m = h3 [] [text ("The word was: " ++ m.word)]
-
+reveal m = h3 [] [text "The word was: ", a [href ("https://www.merriam-webster.com/dictionary/" ++ m.word)] [text m.word] ]
+ 
 inputGuess : Html Msg
 inputGuess = div [][input [ placeholder "type your guesses here", onInput NewGuess, style [], value ""] [] ] 
 
@@ -169,7 +169,7 @@ view model =
 
     (Nothing, Won) ->
        let snippets = viewSnippets [board, picture, wrongSoFar, gameResult] model
-       in framed snippets "Try Again"
+       in framed (snippets ++ [reveal model]) "Try Again"
 
     (Just errorMessage, _) ->
       framed [ h2 [] [text ("Error retrieving secret word: " ++ errorMessage)] ] "Try Again"
